@@ -77,9 +77,9 @@ class DriveService:
         self._raise_if_error(request)
         return request.json()["items"]
 
-    def _get_upload_contentws_url(self, file_object):
+    def _get_upload_contentws_url(self, file_object, name):
         """Get the contentWS endpoint URL to add a new file."""
-        content_type = mimetypes.guess_type(file_object.name)[0]
+        content_type = mimetypes.guess_type(name)[0]
         if content_type is None:
             content_type = ""
 
@@ -98,7 +98,7 @@ class DriveService:
             headers={"Content-Type": "text/plain"},
             data=json.dumps(
                 {
-                    "filename": file_object.name,
+                    "filename": name,
                     "type": "FILE",
                     "content_type": content_type,
                     "size": file_size,
@@ -108,7 +108,7 @@ class DriveService:
         self._raise_if_error(request)
         return (request.json()[0]["document_id"], request.json()[0]["url"])
 
-    def _update_contentws(self, folder_id, sf_info, document_id, file_object):
+    def _update_contentws(self, folder_id, sf_info, document_id, file_object, name):
         data = {
             "data": {
                 "signature": sf_info["fileChecksum"],
@@ -121,7 +121,7 @@ class DriveService:
             "document_id": document_id,
             "path": {
                 "starting_document_id": folder_id,
-                "path": file_object.name,
+                "path": name,
             },
             "allow_conflict": True,
             "file_flags": {
@@ -146,14 +146,14 @@ class DriveService:
         self._raise_if_error(request)
         return request.json()
 
-    def send_file(self, folder_id, file_object):
+    def send_file(self, folder_id, file_object, name):
         """Send new file to iCloud Drive."""
-        document_id, content_url = self._get_upload_contentws_url(file_object)
+        document_id, content_url = self._get_upload_contentws_url(file_object, name)
 
-        request = self.session.post(content_url, files={file_object.name: file_object})
+        request = self.session.post(content_url, files={name: file_object})
         self._raise_if_error(request)
         content_response = request.json()["singleFile"]
-        self._update_contentws(folder_id, content_response, document_id, file_object)
+        self._update_contentws(folder_id, content_response, document_id, file_object, name)
 
     def create_folders(self, parent, name):
         """Creates a new iCloud Drive folder"""
@@ -304,9 +304,9 @@ class DriveNode:
             return response
         return self.connection.get_file(self.data["docwsid"], **kwargs)
 
-    def upload(self, file_object, **kwargs):
+    def upload(self, file_object, file_name, **kwargs):
         """Upload a new file."""
-        return self.connection.send_file(self.data["docwsid"], file_object, **kwargs)
+        return self.connection.send_file(self.data["docwsid"], file_object,file_name, **kwargs)
 
     def dir(self):
         """Gets the node list of directories."""
